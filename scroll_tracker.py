@@ -21,7 +21,11 @@ from pynput import mouse
 # ── Config ───────────────────────────────────────────────────────────────────
 
 DATA_FILE = Path(__file__).parent / "scroll_data.json"
-DISPLAY_REFRESH_INTERVAL = 0.25  # seconds between display refreshes
+DISPLAY_REFRESH_INTERVAL = 1.0  # seconds between display refreshes
+
+# A typical scroll wheel has ~20 notches per revolution on a wheel with
+# ~11.5 mm diameter (circumference ≈ 36 mm), giving ~1.8 mm per click.
+MM_PER_SCROLL_CLICK = 1.8
 
 
 # ── Data persistence ─────────────────────────────────────────────────────────
@@ -76,6 +80,18 @@ def format_duration(seconds: float) -> str:
     return " ".join(parts)
 
 
+def format_distance(clicks: int) -> str:
+    """Convert scroll clicks to a human-readable distance string."""
+    mm = clicks * MM_PER_SCROLL_CLICK
+    if mm < 1000:
+        return f"{mm:.1f} mm"
+    meters = mm / 1000
+    if meters < 1000:
+        return f"{meters:.2f} m"
+    km = meters / 1000
+    return f"{km:.3f} km"
+
+
 def scroll_bar(up: int, down: int, width: int = 30) -> str:
     """Render a simple ratio bar showing up vs down scrolls."""
     total = up + down
@@ -102,6 +118,9 @@ def render_display(session: dict, alltime: dict, session_start: float):
     session_minutes = session_elapsed / 60
     spm = session_total / session_minutes if session_minutes > 0.05 else 0
 
+    session_dist = format_distance(session_total)
+    alltime_dist = format_distance(alltime_total)
+
     lines = [
         "",
         "  ╔══════════════════════════════════════════════════╗",
@@ -111,6 +130,7 @@ def render_display(session: dict, alltime: dict, session_start: float):
         f"  ║   Scroll Up    : {session['up']:<10}                    ║",
         f"  ║   Scroll Down  : {session['down']:<10}                    ║",
         f"  ║   Total Clicks : {session_total:<10}                    ║",
+        f"  ║   Distance     : {session_dist:<10}                    ║",
         f"  ║   Duration     : {format_duration(session_elapsed):<10}                    ║",
         f"  ║   Scrolls/min  : {spm:<10.1f}                    ║",
         f"  ║   Direction    : {scroll_bar(session['up'], session['down'])} ║",
@@ -119,6 +139,7 @@ def render_display(session: dict, alltime: dict, session_start: float):
         f"  ║   Scroll Up    : {alltime['total_scroll_up'] + session['up']:<10}                    ║",
         f"  ║   Scroll Down  : {alltime['total_scroll_down'] + session['down']:<10}                    ║",
         f"  ║   Total Clicks : {alltime_total:<10}                    ║",
+        f"  ║   Distance     : {alltime_dist:<10}                    ║",
         f"  ║   Sessions     : {alltime['total_sessions'] + 1:<10}                    ║",
         f"  ║   Total Time   : {format_duration(alltime_elapsed):<10}                    ║",
         "  ╠══════════════════════════════════════════════════╣",
@@ -185,9 +206,10 @@ def main():
         total = session["up"] + session["down"]
         print()
         print("  Session saved!")
-        print(f"  You scrolled {total} times in {format_duration(session_elapsed)}.")
+        print(f"  You scrolled {total} times ({format_distance(total)}) in {format_duration(session_elapsed)}.")
         print(f"  (Up: {session['up']}  Down: {session['down']})")
-        print(f"\n  Data stored in: {DATA_FILE}")
+        print(f"\n  All-time distance: {format_distance(alltime['total_clicks'])}")
+        print(f"  Data stored in: {DATA_FILE}")
         print()
 
 
