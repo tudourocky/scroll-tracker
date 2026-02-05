@@ -12,6 +12,11 @@ A small Python app that tracks your mouse scroll wheel activity in real-time.
 ## Setup
 
 ```bash
+python -m venv venv
+venv\Scripts\activate
+```
+
+```bash
 pip install -r requirements.txt
 ```
 
